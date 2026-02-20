@@ -48,6 +48,46 @@ export const initSocket = (token) => {
       lastMessageAt: message.createdAt,
     });
   });
+  socket.on('message:read', ({ messageId, roomId, userId }) => {
+    const { messages, setMessages } = useChatStore.getState();
+    const roomMessages = messages[roomId] || [];
+  
+    const updated = roomMessages.map((m) => {
+      if (m._id === messageId) {
+        const alreadyRead = m.readBy?.some((r) => 
+          (r.user || r) === userId
+        );
+        if (!alreadyRead) {
+          return { ...m, readBy: [...(m.readBy || []), { user: userId }] };
+        }
+      }
+      return m;
+    });
+  
+    setMessages(roomId, updated);
+  });
+  socket.on('message:reaction', ({ messageId, roomId, emoji, userId }) => {
+    const { messages, setMessages } = useChatStore.getState();
+    const roomMessages = messages[roomId] || [];
+  
+    const updated = roomMessages.map((m) => {
+      if (m._id === messageId) {
+        const reactions = m.reactions || [];
+        const exists = reactions.find(
+          (r) => r.emoji === emoji && r.user === userId
+        );
+        return {
+          ...m,
+          reactions: exists
+            ? reactions.filter((r) => !(r.emoji === emoji && r.user === userId)) // toggle off
+            : [...reactions, { emoji, user: userId }], // add
+        };
+      }
+      return m;
+    });
+  
+    setMessages(roomId, updated);
+  });
   // socket.on("message:new", (message) => {
   //   const { messages, setMessages, updateRoom, currentRoom } = useChatStore.getState();
   
