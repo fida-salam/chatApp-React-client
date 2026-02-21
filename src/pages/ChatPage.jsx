@@ -39,6 +39,16 @@ export default function ChatPage() {
     socket.on("connect_error", (error) => {
       console.error("❌ Socket error:", error.message);
     });
+    socket.on("message:new", (message) => {
+      const { currentRoom, addMessage, incrementUnread } = useChatStore.getState();
+    
+      addMessage(message.room, message);
+    
+      // Only increment if the message is NOT in the room we're currently viewing
+      if (message.room !== currentRoom?._id) {
+        incrementUnread(message.room);
+      }
+    });
 
     socket.on("room:new", (newRoom) => {
       const { rooms, setRooms, currentRoom, setCurrentRoom } = useChatStore.getState();
@@ -54,31 +64,21 @@ export default function ChatPage() {
       // Refetch rooms list to sync sidebar
       queryClient.invalidateQueries(["rooms"]);
     });
-    // socket.on("room:new", (newRoom) => {
-    //   console.log("🆕 New room received via socket:", newRoom);
-
-    //   setRooms((prevRooms) => {
-    //     const exists = prevRooms.some((r) => r._id === newRoom._id);
-    //     if (!exists) {
-    //       console.log("➕ Adding new room to store");
-    //       return [newRoom, ...prevRooms];
-    //     }
-    //     return prevRooms;
-    //   });
-
-    //   const { currentRoom } = useChatStore.getState();
-    //   if (!currentRoom) {
-    //     console.log("🔄 Auto-selecting new room");
-    //     useChatStore.getState().setCurrentRoom(newRoom);
-    //   }
-
-    //   socket.emit("join_room", newRoom._id);
-    // });
+    socket.on("message:reaction", ({ messageId, reactions, roomId }) => {
+      const { messages, setMessages } = useChatStore.getState();
+      const updated = (messages[roomId] || []).map((m) =>
+        m._id === messageId ? { ...m, reactions } : m
+      );
+      setMessages(roomId, updated);
+    });
+ 
 
     return () => {
       socket.off("connect");
       socket.off("connect_error");
       socket.off("room:new"); // Clean up this listener
+      socket.off("message:new");
+      socket.off("message:reaction");
     };
   }, [accessToken, user, setRooms]); // Add setRooms to dependencies
 

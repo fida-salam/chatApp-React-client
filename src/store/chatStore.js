@@ -65,7 +65,18 @@ export const useChatStore = create((set, get) => ({
       [roomId]: users,
     },
   })),
-
+  incrementUnread: (roomId) =>
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [roomId]: (state.unreadCounts[roomId] || 0) + 1,
+      },
+    })),
+  
+  clearUnread: (roomId) =>
+    set((state) => ({
+      unreadCounts: { ...state.unreadCounts, [roomId]: 0 },
+    })),
 
 
 

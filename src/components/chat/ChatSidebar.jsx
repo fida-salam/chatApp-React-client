@@ -12,7 +12,7 @@ import ProfileModal from './ProfileModal';
 export default function ChatSidebar({ onCreateRoom }) {
   const { user, logout } = useAuthStore();
   const [showProfile, setShowProfile] = useState(false);
-  const { rooms, currentRoom, setCurrentRoom, setRooms, unreadCounts } =
+  const { rooms, currentRoom, setCurrentRoom, setRooms, unreadCounts,clearUnread } =
     useChatStore();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -119,10 +119,12 @@ export default function ChatSidebar({ onCreateRoom }) {
             return (
               <div
                 key={room._id}
-                onClick={() => setCurrentRoom(room)}
-                className={`flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-accent ${
-                  isActive ? "bg-accent" : ""
-                }`}
+                onClick={() => {
+                  setCurrentRoom(room)
+                  clearUnread(room._id);
+                }}
+                className={`flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-accent ${isActive ? "bg-accent" : ""
+                  }`}
               >
                 <div className="relative">
                   <img
@@ -176,27 +178,27 @@ export default function ChatSidebar({ onCreateRoom }) {
 
       {/* User Info */}
       <div className="p-4 border-t">
-  <div className="flex items-center gap-3">
-    <button
-      onClick={() => setShowProfile(true)}
-      className="relative flex-shrink-0 group"
-      title="Edit profile"
-    >
-      <img
-        src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.username}`}
-        alt={user?.username}
-        className="w-10 h-10 rounded-full object-cover ring-2 ring-transparent group-hover:ring-primary transition-all"
-      />
-      <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <Camera className="w-4 h-4 text-white" />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowProfile(true)}
+            className="relative flex-shrink-0 group"
+            title="Edit profile"
+          >
+            <img
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.username}`}
+              alt={user?.username}
+              className="w-10 h-10 rounded-full object-cover ring-2 ring-transparent group-hover:ring-primary transition-all"
+            />
+            <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Camera className="w-4 h-4 text-white" />
+            </div>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium truncate">{user?.username}</h3>
+            <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+          </div>
+        </div>
       </div>
-    </button>
-    <div className="flex-1 min-w-0">
-      <h3 className="font-medium truncate">{user?.username}</h3>
-      <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
-    </div>
-  </div>
-</div>
 
       {/* <div className="p-4 border-t">
         <div className="flex items-center gap-3">
@@ -218,6 +220,6 @@ export default function ChatSidebar({ onCreateRoom }) {
       </div> */}
       {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
 
-    </div>
+    </div >
   );
 }
