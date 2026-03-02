@@ -44,4 +44,25 @@ export const messageService = {
     const { data } = await api.get('/messages/search', { params: { q: query } });
     return data;
   },
+  uploadImage: async (file, roomId) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('roomId', roomId);
+    const { data } = await api.post('/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    // server returns { message: '...', data: <message> }
+    // unwrap so callers just get the message object
+    return data?.data || data;
+  },
+
+  uploadFile: async (file, roomId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('roomId', roomId);
+    const { data } = await api.post('/upload/file', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data?.data || data;
+  },
 };

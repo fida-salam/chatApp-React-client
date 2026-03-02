@@ -26,10 +26,20 @@ export const initSocket = (token) => {
     console.error("Socket connection error:", error);
   });
   socket.on("message:new", (message) => {
-    const { messages, setMessages, addMessage, updateRoom, currentRoom } = useChatStore.getState();
+    const {
+      messages,
+      setMessages,
+      addMessage,
+      updateRoom,
+      currentRoom,
+      incrementUnread,
+    } = useChatStore.getState();
   
-    // Always update the message in store
-    const roomMessages = messages[message.room] || [];
+    // normalize room id in case it's an object
+    const roomId = message.room && message.room._id ? message.room._id : message.room;
+
+    // Always update the message in store, replacing optimistic if present
+    const roomMessages = messages[roomId] || [];
     const optimisticIndex = roomMessages.findIndex(
       (m) => m.tempId === message.tempId || m._id === message._id
     );
@@ -37,16 +47,21 @@ export const initSocket = (token) => {
     if (optimisticIndex !== -1) {
       const updated = [...roomMessages];
       updated[optimisticIndex] = message;
-      setMessages(message.room, updated);
+      setMessages(roomId, updated);
     } else {
-      addMessage(message.room, message); // ✅ Add even if room not open
+      addMessage(roomId, message); // add even if room not open
     }
   
-    // Always update sidebar
-    updateRoom(message.room, {
+    // Always update sidebar metadata
+    updateRoom(roomId, {
       lastMessage: message,
       lastMessageAt: message.createdAt,
     });
+
+    // unread count logic formerly in ChatPage
+    if (roomId !== currentRoom?._id) {
+      incrementUnread(roomId);
+    }
   });
   socket.on('message:read', ({ messageId, roomId, userId }) => {
     const { messages, setMessages } = useChatStore.getState();

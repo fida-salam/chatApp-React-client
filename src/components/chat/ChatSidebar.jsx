@@ -63,13 +63,13 @@ export default function ChatSidebar({ onCreateRoom }) {
   };
 
   return (
-    <div className="w-80 border-r bg-card flex flex-col h-screen">
+    <div className="w-72 md:w-80 border-r bg-card flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-primary" />
-            <h2 className="text-lg font-semibold">Chats</h2>
+      <div className="p-2 sm:p-4 border-b">
+        <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
+            <h2 className="text-base sm:text-lg font-semibold hidden sm:block">Chats</h2>
           </div>
           <Button
             size="icon"
@@ -94,7 +94,7 @@ export default function ChatSidebar({ onCreateRoom }) {
       </div>
 
       {/* New Chat Button */}
-      <div className="p-4 border-b">
+      <div className="p-2 sm:p-4 border-b">
         <Button onClick={onCreateRoom} className="w-full" variant="outline">
           <Plus className="w-4 h-4 mr-2" />
           New Chat

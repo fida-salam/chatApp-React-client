@@ -10,12 +10,14 @@ import ChatMessages from "../components/chat/ChatMessages";
 import ChatInput from "../components/chat/ChatInput";
 import NewChatModal from "../components/chat/NewChatModal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Menu, X } from "lucide-react";
 
 export default function ChatPage() {
   const queryClient = new QueryClient();
   const { user, accessToken } = useAuthStore();
   const { currentRoom, setRooms } = useChatStore();
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
 
   const { data: roomsData } = useQuery({
     queryKey: ["rooms"],
@@ -25,6 +27,22 @@ export default function ChatPage() {
   useEffect(() => {
     if (roomsData) setRooms(roomsData.rooms || roomsData);
   }, [roomsData, setRooms]);
+
+  // Close sidebar on mobile when room is selected
+  useEffect(() => {
+    if (window.innerWidth < 768 && currentRoom) {
+      setSidebarOpen(false);
+    }
+  }, [currentRoom]);
+
+  // Update sidebar state on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!accessToken || !user) return;
@@ -39,17 +57,6 @@ export default function ChatPage() {
     socket.on("connect_error", (error) => {
       console.error("❌ Socket error:", error.message);
     });
-    socket.on("message:new", (message) => {
-      const { currentRoom, addMessage, incrementUnread } = useChatStore.getState();
-    
-      addMessage(message.room, message);
-    
-      // Only increment if the message is NOT in the room we're currently viewing
-      if (message.room !== currentRoom?._id) {
-        incrementUnread(message.room);
-      }
-    });
-
     socket.on("room:new", (newRoom) => {
       const { rooms, setRooms, currentRoom, setCurrentRoom } = useChatStore.getState();
     
@@ -58,29 +65,16 @@ export default function ChatPage() {
         setRooms([newRoom, ...rooms]);
       }
     
-      // Auto-join the socket room
       socket.emit("room:join", { roomId: newRoom._id });
-    
-      // Refetch rooms list to sync sidebar
       queryClient.invalidateQueries(["rooms"]);
     });
-    socket.on("message:reaction", ({ messageId, reactions, roomId }) => {
-      const { messages, setMessages } = useChatStore.getState();
-      const updated = (messages[roomId] || []).map((m) =>
-        m._id === messageId ? { ...m, reactions } : m
-      );
-      setMessages(roomId, updated);
-    });
- 
 
     return () => {
       socket.off("connect");
       socket.off("connect_error");
-      socket.off("room:new"); // Clean up this listener
-      socket.off("message:new");
-      socket.off("message:reaction");
+      socket.off("room:new");
     };
-  }, [accessToken, user, setRooms]); // Add setRooms to dependencies
+  }, [accessToken, user, setRooms]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -90,11 +84,52 @@ export default function ChatPage() {
   }, [currentRoom]);
 
   return (
-    <div className="flex h-screen bg-background">
-      <ChatSidebar onCreateRoom={() => setShowNewChatModal(true)} />
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Sidebar overlay on mobile */}
+      {sidebarOpen && window.innerWidth < 768 && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div className="flex-1 flex flex-col">
-        <ChatHeader room={currentRoom} />
+      {/* Sidebar */}
+      <div
+        className={`fixed md:relative md:flex h-full z-40 transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        <ChatSidebar onCreateRoom={() => setShowNewChatModal(true)} />
+      </div>
+
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile header with menu button */}
+        <div className="md:hidden flex items-center justify-between px-3 py-2 border-b bg-card h-16">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-accent rounded-lg"
+          >
+            {sidebarOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </button>
+          <h1 className="text-lg font-semibold flex-1 text-center">
+            {currentRoom
+              ? currentRoom.type === "dm"
+                ? currentRoom.members?.find((m) => m._id !== user._id)?.username || "Chat"
+                : currentRoom.name
+              : "Messages"}
+          </h1>
+          <div className="w-10" />
+        </div>
+
+        {/* Desktop header */}
+        <div className="hidden md:block">
+          <ChatHeader room={currentRoom} />
+        </div>
 
         {currentRoom ? (
           <>
@@ -102,11 +137,11 @@ export default function ChatPage() {
             <ChatInput room={currentRoom} />
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center px-4">
             <div className="text-center">
-              <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <svg
-                  className="w-12 h-12 text-primary"
+                  className="w-8 h-8 sm:w-12 sm:h-12 text-primary"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -119,8 +154,8 @@ export default function ChatPage() {
                   />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold mb-2">Welcome to Chat!</h2>
-              <p className="text-muted-foreground">
+              <h2 className="text-xl sm:text-2xl font-bold mb-2">Welcome to Chat!</h2>
+              <p className="text-muted-foreground text-sm sm:text-base">
                 Select a conversation or start a new chat
               </p>
             </div>

@@ -1,19 +1,29 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getSocket } from '../../lib/socket';
 import { useAuthStore } from '../../store/authStore';
+import { ChevronDown } from 'lucide-react';
 
-const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '😍', '🤔', '👏', '🔥'];
+const EXTENDED_EMOJIS = [
+  '👍', '👎', '❤️', '🔥', '😀', '😂', '😍', '🤔', '😢', '😡',
+  '👏', '🙌', '🤝', '✨', '🎉', '💯', '🚀', '⭐', '💬', '👀'
+];
 
 export default function EmojiReactions({ message, roomId, showPicker, onClose }) {
   const pickerRef = useRef(null);
   const { user } = useAuthStore();
   const currentUserId = user?._id || user?.id;
+  const [showExtended, setShowExtended] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!showPicker) return;
 
     let handler = null;
-
     const timer = setTimeout(() => {
       handler = (e) => {
         if (pickerRef.current && !pickerRef.current.contains(e.target)) {
@@ -42,6 +52,7 @@ export default function EmojiReactions({ message, roomId, showPicker, onClose })
         emoji,
       });
     }
+    setShowExtended(false);
     onClose();
   };
 
@@ -56,9 +67,10 @@ export default function EmojiReactions({ message, roomId, showPicker, onClose })
   const hasReactions = Object.keys(grouped).length > 0;
 
   if (!hasReactions && !showPicker) return null;
+  if (!isClient) return null; // prevent hydration mismatch
 
   return (
-    <div className="flex flex-wrap items-center gap-1 mt-1 relative">
+    <div className="flex flex-wrap items-center gap-1 mt-2 relative">
       {/* Reaction pills */}
       {Object.entries(grouped).map(([emoji, userIds]) => {
         const iReacted = userIds.includes(currentUserId);
@@ -66,33 +78,74 @@ export default function EmojiReactions({ message, roomId, showPicker, onClose })
           <button
             key={emoji}
             onClick={() => handleReact(emoji)}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors border
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs sm:text-sm transition-all border
               ${iReacted
-                ? 'bg-primary/20 border-primary text-primary font-semibold'
-                : 'bg-accent border-transparent hover:bg-accent/80'
+                ? 'bg-primary/20 border-primary text-primary font-semibold scale-105'
+                : 'bg-accent border-transparent hover:bg-accent/80 active:scale-95'
               }`}
             title={`${userIds.length} reaction${userIds.length > 1 ? 's' : ''}`}
           >
-            {emoji} <span>{userIds.length}</span>
+            <span>{emoji}</span>
+            <span className="hidden sm:inline">{userIds.length}</span>
           </button>
         );
       })}
 
-      {/* Emoji picker */}
+      {/* Emoji picker button */}
       {showPicker && (
         <div
           ref={pickerRef}
-          className="absolute bottom-8 left-0 flex gap-2 p-3 bg-card border rounded-2xl shadow-xl z-50"
+          className="fixed sm:absolute bottom-16 sm:bottom-8 right-4 sm:right-auto sm:left-0 z-50 flex flex-col gap-2 p-3 bg-card border rounded-2xl shadow-2xl"
+          style={{
+            maxHeight: '70vh',
+            overflowY: 'auto',
+            minWidth: '280px',
+            maxWidth: '90vw',
+          }}
         >
-          {QUICK_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => handleReact(emoji)}
-              className="text-xl hover:scale-125 transition-transform active:scale-95"
-            >
-              {emoji}
-            </button>
-          ))}
+          {/* Quick reactions */}
+          <div className="flex flex-wrap gap-2 justify-center">
+            {QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => handleReact(emoji)}
+                className="text-xl sm:text-2xl hover:scale-125 transition-transform active:scale-95 p-1 rounded hover:bg-primary/10"
+                type="button"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+
+          {/* Toggle for extended picker */}
+          <button
+            type="button"
+            onClick={() => setShowExtended(!showExtended)}
+            className="w-full py-2 flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground border-t transition-colors"
+          >
+            More emojis
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${
+                showExtended ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {/* Extended picker */}
+          {showExtended && (
+            <div className="flex flex-wrap gap-2 justify-center pt-2 border-t">
+              {EXTENDED_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleReact(emoji)}
+                  className="text-xl sm:text-2xl hover:scale-125 transition-transform active:scale-95 p-1 rounded hover:bg-primary/10"
+                  type="button"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
